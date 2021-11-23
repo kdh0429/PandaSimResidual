@@ -1,0 +1,18 @@
+.vscode/
+
+# Data
+data.csv
+TrainingData.csv
+ValidationData.csv
+TestingData.csv
+
+OneClassSVM/data/
+
+# Model
+checkpoints/
+
+# Results
+result/
+
+# Wandb
+wandb/
