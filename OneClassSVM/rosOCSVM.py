@@ -4,6 +4,7 @@ import rospy
 
 from std_msgs.msg import Float32MultiArray
 
+import numpy as np
 from numpy import genfromtxt
 
 from sklearn.svm import OneClassSVM
@@ -12,27 +13,29 @@ import _pickle as cPickle
 # Data
 num_train_data = 70000
 num_joint = 7
+num_seq = 5
 
 class PandaOCSVM:
 
     def __init__(self):
-        with open('ocsvm_residual.pkl', 'rb') as fid:
+        with open('./model/ocsvm_residual.pkl', 'rb') as fid:
             self.clf = cPickle.load(fid)
         print("Loaded Model!")
 
-        self.output_max = genfromtxt('../MinMax.csv', delimiter=",")[0]
+        self.output_max = np.tile(genfromtxt('./data/MinMax.csv', delimiter=",")[0],num_seq)
+        self.output_min = np.tile(genfromtxt('./data/MinMax.csv', delimiter=",")[1],num_seq)
 
-        # In ROS, nodes are uniquely named. If two nodes with the same
-        # name are launched, the previous one is kicked off. The
-        # anonymous=True flag means that rospy will choose a unique
-        # name for our 'listener' node so that multiple listeners can
-        # run simultaneously.
+        self.threshold = -0.003
+
+        print("OutMax: ", self.output_min)
+
         rospy.Subscriber("/panda/residual", Float32MultiArray, self.callback)
 
     def callback(self, data):
-        self.residual = [data.data / self.output_max]
-        collision_state = self.clf.predict(self.residual)
-        if collision_state == -1:
+        self.residual = [2*(data.data - self.output_min) / (self.output_max - self.output_min) - 1]
+        # collision_state = self.clf.predict(self.residual)
+        anomaly_score = self.clf.decision_function(self.residual)
+        if anomaly_score < self.threshold:
             print("Collision")
         
     def listener(self):
